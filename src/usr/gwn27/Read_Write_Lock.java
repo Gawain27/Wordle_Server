@@ -1,8 +1,8 @@
 package usr.gwn27;
 
 public class Read_Write_Lock {
-    private int readers       = 0;
-    private int writers       = 0;
+    private int readers = 0;
+    private int writers = 0;
     private int writeRequests = 0;
 
     public synchronized void lockRead() throws InterruptedException{

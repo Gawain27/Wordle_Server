@@ -34,6 +34,7 @@ public class Json_Handler {
         if(user.latest_streak > user.longest_streak){
             user.longest_streak = user.latest_streak;
         }
+        user.was_playing = false;
         user.current_word_to_guess = "";
         write_to_json(user_name, user);
     }
@@ -42,6 +43,7 @@ public class Json_Handler {
         User_Data user = read_from_json(user_name);
         user.percent_won = ((float)user.games_won/(float)user.games_played)*100;
         user.latest_streak = 0;
+        user.was_playing = false;
         user.current_word_to_guess = "";
         write_to_json(user_name, user);
     }
@@ -60,9 +62,7 @@ public class Json_Handler {
         if(user_name.equals(Colors.RED.get_color_code()+"No_User"+Colors.RESET.get_color_code())){
             return false;
         }
-        System.out.println("recupero user..."+user_name);
         User_Data user = read_from_json(user_name);
-        System.out.println("user recuperato!");
         return user.is_logged;
     }
 
@@ -70,5 +70,12 @@ public class Json_Handler {
         User_Data user = read_from_json(user_name);
         user.is_logged = logged;
         write_to_json(user_name, user);
+    }
+
+    public void handle_play_disconnection(String user_name) throws IOException {
+        User_Data user = read_from_json(user_name);
+        if(user.was_playing){
+            update_user_defeat(user_name);
+        }
     }
 }

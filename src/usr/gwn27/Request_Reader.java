@@ -38,9 +38,9 @@ public class Request_Reader implements Runnable {
 
     private void cancel_connection() throws IOException {
         String user_left_connected = ((StringBuilder) channel_key.attachment()).toString();
-        System.out.println("cancel connection! AAAAAAAAAAAA " +user_left_connected);
         if(!user_left_connected.equals("")){
             new Json_Handler().set_user_logged(user_left_connected, false);
+            new Json_Handler().handle_play_disconnection(user_left_connected);
         }
         this.client_connection.close();
         channel_key.cancel();

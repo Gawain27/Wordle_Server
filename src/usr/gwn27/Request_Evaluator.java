@@ -91,9 +91,9 @@ public class Request_Evaluator {
                 file_lock.unlockWrite();
 
                 server_conn_handler.send_response(ByteBuffer.wrap("play_started".getBytes()));
-                //System.out.println("attach play:"+channel_key.attachment().toString());
                 User_Data playing_user = json_handler.read_from_json(command_args[1]);
                 playing_user.games_played++;
+                playing_user.was_playing = true;
                 playing_user.current_word_to_guess = Word_Selector.get_current_word();
                 playing_user.current_word_number = Word_Selector.get_word_number()+"";
                 json_handler.write_to_json(command_args[1], playing_user);
@@ -107,28 +107,20 @@ public class Request_Evaluator {
     }
 
     public void login_user(String[] command_args) throws IOException, NoSuchAlgorithmException {
-        System.out.println("ok");
         if(command_args[3].equals(Colors.RED.get_color_code()+"No_User"+Colors.RESET.get_color_code())){
             if(new File("user_data/"+command_args[1]+".json").exists()){
-                System.out.println("esiste");
                 User_Data logging = json_handler.read_from_json(command_args[1]);
-                System.out.println("controllo login...");
                 if(!json_handler.is_user_logged(command_args[1])){
-                    System.out.println("non loggato!");
                     MessageDigest encrypter = MessageDigest.getInstance("MD5");
                     encrypter.update(command_args[2].getBytes());
                     if(logging.password.equals(new String(encrypter.digest()))){
-                        System.out.println("loggato");
                         json_handler.set_user_logged(command_args[1], true);
                         ((StringBuilder) channel_key.attachment()).setLength(0);
                         ((StringBuilder) channel_key.attachment()).append(command_args[1]);
-                        System.out.println("attach login:"+channel_key.attachment());
-                        System.out.println("attach2 login:"+channel_key.attachment());
                         server_conn_handler.send_response(ByteBuffer.wrap("login_success".getBytes()));
                         return;
                     }
                 }else{
-                    System.out.println("occupato");
                     server_conn_handler.send_response(ByteBuffer.wrap("already_occupied".getBytes()));
                 }
             }

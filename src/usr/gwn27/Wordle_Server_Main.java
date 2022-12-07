@@ -64,9 +64,13 @@ public class Wordle_Server_Main {
         }
     }
 
-    private static void set_config(AtomicInteger server_port,AtomicInteger word_time, StringBuilder host_name, StringBuilder group_ip) {
+    private static void set_config(AtomicInteger server_port,AtomicInteger word_time, StringBuilder host_name, StringBuilder group_ip){
         boolean configuration_done = false;
         try (BufferedReader config_file = new BufferedReader(new FileReader("server.conf"))) {
+            File user_folder = new File("user_data/"), played_conf = new File("already_played.wordconf");
+            if(!played_conf.exists()){if(!played_conf.createNewFile()){throw new SecurityException();}}
+            if(!user_folder.exists()){if(!user_folder.mkdir()){throw new SecurityException();}}
+
             String setting;
             while ((setting = config_file.readLine()) != null) {
                 String[] setting_param = setting.split(":");
@@ -101,7 +105,10 @@ public class Wordle_Server_Main {
             if (!configuration_done) {
                 throw new IOException();
             }
-        } catch (FileNotFoundException e) {
+        }catch (SecurityException e){
+            System.out.println(Colors.RED.get_color_code()+"Impossibile creare file di gioco - Chiusura applicazione..."+Colors.RESET.get_color_code());
+            System.exit(0);
+        }catch (FileNotFoundException e) {
             System.out.println(Colors.RED.get_color_code()+"Impossibile trovare server.conf - Chiusura applicazione..."+Colors.RESET.get_color_code());
             System.exit(0);
         } catch (UnsupportedOperationException e){

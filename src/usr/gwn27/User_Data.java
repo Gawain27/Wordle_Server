@@ -10,6 +10,7 @@ public class User_Data {
     public int latest_streak = 0;
     public int longest_streak = 0;
     public boolean is_logged = false;
+    public boolean was_playing = false;
     public String current_word_to_guess = "";
     public String current_word_number = "";
     public LinkedHashMap<Integer, Integer> guess_distribution = new LinkedHashMap<>();
