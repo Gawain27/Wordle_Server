@@ -1,31 +1,24 @@
 package usr.gwn27;
 
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server_Connection_Handler {
-
     private final SocketChannel client_channel;
     public Server_Connection_Handler(SocketChannel client_connected){
         this.client_channel = client_connected;
     }
 
     public void send_response(ByteBuffer next_command) throws IOException {
-        ByteBuffer command_length = ByteBuffer.allocate(4);
-        command_length.putInt(next_command.array().length);
-        while(next_command.hasRemaining()){
-            client_channel.write(request_concat(command_length, next_command));
-        }
+        ByteBuffer buf = request_concat(next_command);
+        buf.clear();
+        client_channel.write(buf);
     }
 
-    private ByteBuffer request_concat(final ByteBuffer ...buffers) {
-        final ByteBuffer combined = ByteBuffer.allocate(Arrays.stream(buffers).mapToInt(Buffer::remaining).sum());
-        Arrays.stream(buffers).forEach(b -> combined.put(b.duplicate()));
-        return combined;
+    private ByteBuffer request_concat(ByteBuffer second) {
+        return ByteBuffer.allocate(second.array().length+4).putInt(second.array().length).put(second);
     }
 
 
@@ -35,13 +28,13 @@ public class Server_Connection_Handler {
             ByteBuffer message_length = ByteBuffer.allocate(4);
             AtomicInteger bytes_total = new AtomicInteger();
             fill_buffer(message_length, bytes_total);
-
             ByteBuffer message = ByteBuffer.allocate(bytes_total.get());
             fill_buffer(message, response);
+            if(bytes_total.get() == -1){
+                throw new IOException();
+            }
             return new String(message.array());
         } catch (IOException e) {
-            System.out.println("Error! Cannot receive data from client!");
-            System.exit(0);
             return null;
         }
     }
@@ -49,14 +42,15 @@ public class Server_Connection_Handler {
     private <T> void fill_buffer(ByteBuffer buffer, T data_string) throws IOException {
         int read;
         while((read = client_channel.read(buffer)) != 0){
-            client_channel.configureBlocking(false);
             if(data_string instanceof AtomicInteger){
+                buffer.clear();
                 ((AtomicInteger) data_string).set(buffer.getInt());
+                return;
             }else{
-                ((StringBuilder) data_string).append(new String(buffer.array()), 0, read);
+                String to_append = new String(buffer.array());
+                ((StringBuilder) data_string).append(to_append, 0, Math.min(to_append.length(),read));
             }
             buffer.clear();
         }
-        client_channel.configureBlocking(true);
     }
 }

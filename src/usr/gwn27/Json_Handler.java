@@ -3,9 +3,7 @@ package usr.gwn27;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 
 public class Json_Handler {
     JsonReader json_reader;
@@ -31,8 +29,8 @@ public class Json_Handler {
     public void update_user_win(String user_name, String guesses) throws IOException {
         User_Data user = read_from_json(user_name);
         user.games_won++;
-        user.average_guesses = (user.average_guesses*(user.games_won-1)+Integer.parseInt(guesses))/user.games_won;
-        user.percent_won = (float)(user.games_won/user.games_played)*100;
+        user.update_distribution(guesses);
+        user.percent_won = ((float)user.games_won/(float)user.games_played)*100;
         user.latest_streak++;
         if(user.latest_streak > user.longest_streak){
             user.longest_streak = user.latest_streak;
@@ -41,10 +39,9 @@ public class Json_Handler {
         write_to_json(user_name, user);
     }
 
-    public void update_user_defeat(String user_name, String guesses) throws IOException {
+    public void update_user_defeat(String user_name) throws IOException {
         User_Data user = read_from_json(user_name);
-        user.average_guesses = user.games_won == 0 ? 0 : (user.average_guesses*(user.games_won-1)+Integer.parseInt(guesses)+1)/user.games_won;
-        user.percent_won = (float)(user.games_won/user.games_played)*100;
+        user.percent_won = ((float)user.games_won/(float)user.games_played)*100;
         user.latest_streak = 0;
         user.current_word_to_guess = "";
         write_to_json(user_name, user);

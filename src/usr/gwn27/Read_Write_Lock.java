@@ -19,7 +19,6 @@ public class Read_Write_Lock {
 
     public synchronized void lockWrite() throws InterruptedException{
         writeRequests++;
-
         while(readers > 0 || writers > 0){
             wait();
         }

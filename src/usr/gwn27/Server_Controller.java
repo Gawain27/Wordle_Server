@@ -3,35 +3,51 @@ package usr.gwn27;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Server_Controller implements Runnable{
+    private final Thread word_selector_thread;
+    private final AtomicBoolean stop_server;
+
+    public Server_Controller(Thread word_selector_thread, AtomicBoolean stop_server) {
+        this.word_selector_thread = word_selector_thread;
+        this.stop_server = stop_server;
+    }
+
     @Override
     public void run() {
         try(BufferedReader command_stream = new BufferedReader(new InputStreamReader(System.in))){
             String read;
-            while(true){
+            while(!stop_server.get()){
+                System.out.print("Inserisci comando: ");
                 read = command_stream.readLine().trim();
-                if(read.equals("shutdown")){
-                    Wordle_Server.stop_server = true;
-                    break;
-                }else if(read.equals("help")){
-                    System.out.println(help_list());
-                }else{
-                    System.out.println("Unknown command - try 'help' for a list of commands");
+                System.out.println();
+                switch (read) {
+                    case "shutdown":
+                        stop_server.set(true);
+                    case "help":
+                        System.out.println(help_list());
+                        break;
+                    case "word":
+                        System.out.println("Parola corrente: " + Word_Selector.get_current_word());
+                        break;
+                    default:
+                        System.out.println("Comando sconosciuto. Prova 'help' per avere una lista dei comandi.");
+                        break;
                 }
             }
-            System.out.println("Shutting down...");
+            word_selector_thread.interrupt();
             Thread.sleep(1000);
         } catch (IOException e) {
-            System.out.println("Error while trying to start server's command line - Shutting down...");
+            System.out.println("Errore di avvio shell dei comandi.");
             System.exit(0);
         } catch (InterruptedException ignored) {
-
         }
     }
 
     private String help_list(){
-        return "help - shows a list of available commands\n" +
-                "shutdown - terminates all server activities after completing ongoing requests";
+        return "help - Mostra una lista dei comandi disponibili\n" +
+                "shutdown - Termina le attività del server dopo aver soddisfatto le richieste rimanenti\n"+
+                "word - Mostra sul terminale la parola da indovinare al momento";
     }
 }
