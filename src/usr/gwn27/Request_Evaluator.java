@@ -47,7 +47,7 @@ public class Request_Evaluator {
     private void logout_user(String[] command_args) throws IOException {
         if(json_handler.is_user_logged(command_args[1])){
             json_handler.set_user_logged(command_args[1], false);
-            channel_key.attach(null);
+            ((StringBuilder) channel_key.attachment()).setLength(0);
             server_conn_handler.send_response(ByteBuffer.wrap("logout_success".getBytes()));
         }else{
             server_conn_handler.send_response(ByteBuffer.wrap("logout_failure".getBytes()));
@@ -174,14 +174,14 @@ public class Request_Evaluator {
         next_hint.append("-");
         for(int i = 0; i < 10; i++){
             if(guess.charAt(i) == word_to_guess.charAt(i)){
-                next_hint.append(Colors.GREEN_BACK.get_color_code()).append("\u205F").append(guess.charAt(i))
-                        .append("\u205F").append(Colors.RESET.get_color_code()).append("-");
+                next_hint.append(Colors.GREEN_BACK.get_color_code()).append("_").append(guess.charAt(i))
+                        .append("_").append(Colors.RESET.get_color_code()).append("-");
             }else if(word_to_guess.contains(guess.charAt(i)+"")){
-                next_hint.append(Colors.YELLOW_BACK.get_color_code()).append("\u205F").append(guess.charAt(i))
-                        .append("\u205F").append(Colors.RESET.get_color_code()).append("-");
+                next_hint.append(Colors.YELLOW_BACK.get_color_code()).append("_").append(guess.charAt(i))
+                        .append("_").append(Colors.RESET.get_color_code()).append("-");
             }else{
-                next_hint.append(Colors.WHITE_BACK.get_color_code()).append("\u205F").append(guess.charAt(i))
-                        .append("\u205F").append(Colors.RESET.get_color_code()).append("-");
+                next_hint.append(Colors.WHITE_BACK.get_color_code()).append("_").append(guess.charAt(i))
+                        .append("_").append(Colors.RESET.get_color_code()).append("-");
             }
         }
         return next_hint.toString();
@@ -191,7 +191,6 @@ public class Request_Evaluator {
         try{
             DatagramSocket socket = new DatagramSocket();
             InetAddress group = InetAddress.getByName(group_ip);
-            System.out.println("SHARING "+json_handler.get_playing_number(command_args[3]));
             String to_share = "Wordle "+json_handler.get_playing_number(command_args[3])+" "+command_args[1]+"/12\n"+command_args[2];
             DatagramPacket packet = new DatagramPacket(to_share.getBytes(),0, to_share.getBytes().length, group, server_port);
             socket.send(packet);

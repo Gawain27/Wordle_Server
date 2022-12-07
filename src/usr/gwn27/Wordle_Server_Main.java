@@ -18,10 +18,16 @@ import static java.util.concurrent.Executors.newFixedThreadPool;
 public class Wordle_Server_Main {
 
     public static void main(String[] args) {
+        /*  stop_server - booleano utilizzato per terminare l'applicazione
+        *   server_port - la porta su cui il server deve inviare/ricevere richieste
+        *   host_name - l'indirizzo ip sul quale ricevere le richieste
+        *   file_lock - elemento Lock utilizzato per accedere al file 'already_played.wordconf'
+        * */
         AtomicBoolean stop_server = new AtomicBoolean(false);
         AtomicInteger server_port = new AtomicInteger(), word_time = new AtomicInteger();
         StringBuilder host_name = new StringBuilder(), group_ip = new StringBuilder();
         Read_Write_Lock file_lock = new Read_Write_Lock();
+
         set_config(server_port, word_time, host_name, group_ip);
 
         try(ServerSocketChannel server_channel = ServerSocketChannel.open()){
@@ -64,9 +70,14 @@ public class Wordle_Server_Main {
         }
     }
 
+    /* funzione per l'impostazione dei parametri da utilizzare nell'applicazione
+    *  I parametri vengono impostati negli oggetti, presenti nella segnatura, passati per riferimento
+    * */
     private static void set_config(AtomicInteger server_port,AtomicInteger word_time, StringBuilder host_name, StringBuilder group_ip){
         boolean configuration_done = false;
         try (BufferedReader config_file = new BufferedReader(new FileReader("server.conf"))) {
+            /*
+            * */
             File user_folder = new File("user_data/"), played_conf = new File("already_played.wordconf");
             if(!played_conf.exists()){if(!played_conf.createNewFile()){throw new SecurityException();}}
             if(!user_folder.exists()){if(!user_folder.mkdir()){throw new SecurityException();}}
