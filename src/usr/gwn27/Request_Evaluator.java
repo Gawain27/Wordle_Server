@@ -3,6 +3,7 @@ package usr.gwn27;
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -11,13 +12,15 @@ public class Request_Evaluator {
     private final Read_Write_Lock file_lock;
     private final int server_port;
     private final String group_ip;
+    private final SelectionKey channel_key;
     private final Json_Handler json_handler;
 
-    public Request_Evaluator(Server_Connection_Handler server_conn_handler, Read_Write_Lock file_lock, int server_port, String group_ip) {
+    public Request_Evaluator(Server_Connection_Handler server_conn_handler, Read_Write_Lock file_lock, int server_port, String group_ip, SelectionKey channel_key) {
         this.server_conn_handler = server_conn_handler;
         this.file_lock = file_lock;
         this.server_port = server_port;
         this.group_ip = group_ip;
+        this.channel_key = channel_key;
         this.json_handler = new Json_Handler();
     }
 
@@ -25,18 +28,13 @@ public class Request_Evaluator {
         String[] command_args = command_requested.split(" ");
         try{
             switch(command_args[0]){
-                case "register": register_user(command_args);
-                    break;
-                case "play": start_user_game(command_args);
-                    break;
-                case "login": login_user(command_args);
-                    break;
-                case "stats": get_user_stats(command_args);
-                    break;
-                case "guess": evaluate_user_guess(command_args);
-                    break;
-                case "share": forward_shared_game(command_args);
-                    break;
+                case "register": register_user(command_args); break;
+                case "play": start_user_game(command_args); break;
+                case "login": login_user(command_args); break;
+                case "stats": get_user_stats(command_args); break;
+                case "guess": evaluate_user_guess(command_args); break;
+                case "share": forward_shared_game(command_args); break;
+                case "logout": logout_user(command_args); break;
                 case "disconnect": return disconnect_client();
                 case "play_disconnect": play_disconnect(command_args[1]);
             }
@@ -44,6 +42,16 @@ public class Request_Evaluator {
             return false;
         }
         return true;
+    }
+
+    private void logout_user(String[] command_args) throws IOException {
+        if(json_handler.is_user_logged(command_args[1])){
+            json_handler.set_user_logged(command_args[1], false);
+            channel_key.attach(null);
+            server_conn_handler.send_response(ByteBuffer.wrap("logout_success".getBytes()));
+        }else{
+            server_conn_handler.send_response(ByteBuffer.wrap("logout_failure".getBytes()));
+        }
     }
 
     public void register_user(String[] command_args) throws IOException, NoSuchAlgorithmException {
@@ -59,7 +67,8 @@ public class Request_Evaluator {
     }
 
     public void start_user_game(String[] command_args) throws IOException{
-        if(!command_args[1].equals(Colors.RED.get_color_code()+"No_User"+Colors.RESET.get_color_code())){
+        if(!command_args[1].equals(Colors.RED.get_color_code()+"No_User"+Colors.RESET.get_color_code())
+            && json_handler.is_user_logged(command_args[1])){
             try{
 
                 file_lock.lockRead();
@@ -82,9 +91,11 @@ public class Request_Evaluator {
                 file_lock.unlockWrite();
 
                 server_conn_handler.send_response(ByteBuffer.wrap("play_started".getBytes()));
+                //System.out.println("attach play:"+channel_key.attachment().toString());
                 User_Data playing_user = json_handler.read_from_json(command_args[1]);
                 playing_user.games_played++;
                 playing_user.current_word_to_guess = Word_Selector.get_current_word();
+                playing_user.current_word_number = Word_Selector.get_word_number()+"";
                 json_handler.write_to_json(command_args[1], playing_user);
 
             }catch (InterruptedException e){
@@ -96,14 +107,29 @@ public class Request_Evaluator {
     }
 
     public void login_user(String[] command_args) throws IOException, NoSuchAlgorithmException {
+        System.out.println("ok");
         if(command_args[3].equals(Colors.RED.get_color_code()+"No_User"+Colors.RESET.get_color_code())){
             if(new File("user_data/"+command_args[1]+".json").exists()){
+                System.out.println("esiste");
                 User_Data logging = json_handler.read_from_json(command_args[1]);
-                MessageDigest encrypter = MessageDigest.getInstance("MD5");
-                encrypter.update(command_args[2].getBytes());
-                if(logging.password.equals(new String(encrypter.digest()))){
-                    server_conn_handler.send_response(ByteBuffer.wrap("login_success".getBytes()));
-                    return;
+                System.out.println("controllo login...");
+                if(!json_handler.is_user_logged(command_args[1])){
+                    System.out.println("non loggato!");
+                    MessageDigest encrypter = MessageDigest.getInstance("MD5");
+                    encrypter.update(command_args[2].getBytes());
+                    if(logging.password.equals(new String(encrypter.digest()))){
+                        System.out.println("loggato");
+                        json_handler.set_user_logged(command_args[1], true);
+                        ((StringBuilder) channel_key.attachment()).setLength(0);
+                        ((StringBuilder) channel_key.attachment()).append(command_args[1]);
+                        System.out.println("attach login:"+channel_key.attachment());
+                        System.out.println("attach2 login:"+channel_key.attachment());
+                        server_conn_handler.send_response(ByteBuffer.wrap("login_success".getBytes()));
+                        return;
+                    }
+                }else{
+                    System.out.println("occupato");
+                    server_conn_handler.send_response(ByteBuffer.wrap("already_occupied".getBytes()));
                 }
             }
             server_conn_handler.send_response(ByteBuffer.wrap("no_match".getBytes()));
@@ -113,7 +139,8 @@ public class Request_Evaluator {
     }
 
     public void get_user_stats(String[] command_args) throws IOException {
-        if(!command_args[1].equals(Colors.RED.get_color_code()+"No_User"+Colors.RESET.get_color_code())){
+        if(!command_args[1].equals(Colors.RED.get_color_code()+"No_User"+Colors.RESET.get_color_code())
+            && json_handler.is_user_logged(command_args[1])){
             User_Data user = json_handler.read_from_json(command_args[1]);
             String user_stats = "Partite giocate: "+user.games_played+"\nPercentuale vittorie: "+user.percent_won
                     +"%\nSerie vittorie attuale: "+user.latest_streak+"\nSerie vittorie migliore: "+user.longest_streak
@@ -126,25 +153,27 @@ public class Request_Evaluator {
 
     public void evaluate_user_guess(String[] command_args) throws IOException {
         String read;
-        BufferedReader reader = new BufferedReader(new FileReader("words.txt"));
-        while((read = reader.readLine()) != null){
-            if(read.equals(command_args[1])){
-                String word_to_guess = json_handler.get_playing_word(command_args[3]), response;
-                if(command_args[1].equals(word_to_guess)){
-                    response = "guessed " + build_next_hint(command_args[1], word_to_guess);
-                    json_handler.update_user_win(command_args[3], command_args[2]);
-                }else if(Integer.parseInt(command_args[2]) == 11){
-                    response = "defeat "+ build_next_hint(command_args[1], word_to_guess);
-                    json_handler.update_user_defeat(command_args[3]);
-                }else{
-                    response = "valid " + build_next_hint(command_args[1], word_to_guess);
+        if(json_handler.is_user_logged(command_args[3])){
+            BufferedReader reader = new BufferedReader(new FileReader("words.txt"));
+            while((read = reader.readLine()) != null){
+                if(read.equals(command_args[1])){
+                    String word_to_guess = json_handler.get_playing_word(command_args[3]), response;
+                    if(command_args[1].equals(word_to_guess)){
+                        response = "guessed " + build_next_hint(command_args[1], word_to_guess);
+                        json_handler.update_user_win(command_args[3], command_args[2]);
+                    }else if(Integer.parseInt(command_args[2]) == 11){
+                        response = "defeat "+ build_next_hint(command_args[1], word_to_guess);
+                        json_handler.update_user_defeat(command_args[3]);
+                    }else{
+                        response = "valid " + build_next_hint(command_args[1], word_to_guess);
+                    }
+                    server_conn_handler.send_response(ByteBuffer.wrap(response.getBytes()));
+                    reader.close();
+                    return;
                 }
-                server_conn_handler.send_response(ByteBuffer.wrap(response.getBytes()));
-                reader.close();
-                return;
             }
+            reader.close();
         }
-        reader.close();
         server_conn_handler.send_response(ByteBuffer.wrap("invalid".getBytes()));
     }
 
@@ -170,7 +199,8 @@ public class Request_Evaluator {
         try{
             DatagramSocket socket = new DatagramSocket();
             InetAddress group = InetAddress.getByName(group_ip);
-            String to_share = "Wordle "+Word_Selector.get_word_number()+" "+command_args[1]+"/12\n"+command_args[2];
+            System.out.println("SHARING "+json_handler.get_playing_number(command_args[3]));
+            String to_share = "Wordle "+json_handler.get_playing_number(command_args[3])+" "+command_args[1]+"/12\n"+command_args[2];
             DatagramPacket packet = new DatagramPacket(to_share.getBytes(),0, to_share.getBytes().length, group, server_port);
             socket.send(packet);
             socket.close();

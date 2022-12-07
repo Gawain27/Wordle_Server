@@ -1,6 +1,7 @@
 package usr.gwn27;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -16,6 +17,7 @@ public class Server_Controller implements Runnable{
 
     @Override
     public void run() {
+        Runtime.getRuntime().addShutdownHook(new Thread(this::force_log_out));
         try(BufferedReader command_stream = new BufferedReader(new InputStreamReader(System.in))){
             String read;
             while(!stop_server.get()){
@@ -24,7 +26,9 @@ public class Server_Controller implements Runnable{
                 System.out.println();
                 switch (read) {
                     case "shutdown":
+                        force_log_out();
                         stop_server.set(true);
+                        break;
                     case "help":
                         System.out.println(help_list());
                         break;
@@ -42,6 +46,23 @@ public class Server_Controller implements Runnable{
             System.out.println("Errore di avvio shell dei comandi.");
             System.exit(0);
         } catch (InterruptedException ignored) {
+        }
+    }
+
+    private void force_log_out(){
+        Json_Handler handler = new Json_Handler();
+        File[] json_list = new File("user_data/").listFiles();
+        if(json_list == null){
+            return;
+        }
+        try{
+            for (File user_file : json_list) {
+                if (user_file.getName().contains(".json")) {
+                    handler.set_user_logged(user_file.getName().replace(".json", ""), false);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

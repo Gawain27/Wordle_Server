@@ -41,13 +41,13 @@ public class Wordle_Server_Main {
                     SelectionKey current_key = key_iterator.next();
 
                     if (current_key.isReadable()) {
-                        request_pool.execute(new Request_Reader(current_key, selector, file_lock, server_port.get(), group_ip.toString()));
-                        current_key.cancel();
+                        request_pool.execute(new Request_Reader(current_key, file_lock, server_port.get(), group_ip.toString()));
+                        current_key.interestOps(0);
 
                     }else if (current_key.isAcceptable()) {
                         SocketChannel client = server_channel.accept();
                         client.configureBlocking(false);
-                        client.register(selector, SelectionKey.OP_READ);
+                        client.register(selector, SelectionKey.OP_READ, new StringBuilder());
                         client.finishConnect();
                     }
                     key_iterator.remove();

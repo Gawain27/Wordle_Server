@@ -8,9 +8,8 @@ import java.io.*;
 public class Json_Handler {
     JsonReader json_reader;
     FileWriter json_writer;
-    public Json_Handler(){
 
-    }
+    public Json_Handler(){}
 
     public void write_to_json(String user_name, User_Data user) throws IOException {
         this.json_writer = new FileWriter("user_data/"+user_name+".json");
@@ -50,5 +49,26 @@ public class Json_Handler {
     public String get_playing_word(String user_name) throws IOException {
         User_Data user = read_from_json(user_name);
         return user.current_word_to_guess;
+    }
+
+    public String get_playing_number(String user_name) throws IOException {
+        User_Data user = read_from_json(user_name);
+        return user.current_word_number;
+    }
+
+    public boolean is_user_logged(String user_name) throws IOException {
+        if(user_name.equals(Colors.RED.get_color_code()+"No_User"+Colors.RESET.get_color_code())){
+            return false;
+        }
+        System.out.println("recupero user..."+user_name);
+        User_Data user = read_from_json(user_name);
+        System.out.println("user recuperato!");
+        return user.is_logged;
+    }
+
+    public void set_user_logged(String user_name, boolean logged) throws IOException {
+        User_Data user = read_from_json(user_name);
+        user.is_logged = logged;
+        write_to_json(user_name, user);
     }
 }
